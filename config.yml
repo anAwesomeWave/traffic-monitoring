@@ -1,1 +1,6 @@
-for settings
+protocols:
+  - TCP
+  - FTP
+ports_range:
+  - 80
+  - 4000
