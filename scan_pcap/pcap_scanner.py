@@ -1,3 +1,5 @@
+from logging.config import fileConfig
+
 from scapy.all import *
 from prettytable import PrettyTable
 from scapy.layers.dns import DNS
@@ -5,6 +7,14 @@ from scapy.layers.dot11 import Dot11Beacon, Dot11Elt, Dot11
 from scapy.layers.inet import TCP, UDP, ICMP, IP
 from scapy.layers.l2 import Ether
 
+ROOT_PATH = os.path.join(os.path.dirname(__file__), '..')
+LOGGER_CONF = ROOT_PATH + '/logger_config.conf'
+fileConfig(
+    LOGGER_CONF,
+    disable_existing_loggers=False,
+    defaults={'logfilename': ROOT_PATH + '/logs/pcap-scanner.log'}
+)
+logger = logging.getLogger(__name__)
 
 class PcapFilters:
 
@@ -199,7 +209,8 @@ def analyze_pcap(pcap_file):
 
 
 def main():
-    pcap_file = "scan-pcap/capture.pcap"
+    logger.info('Start scanning network')
+    pcap_file = "scan_pcap/capture.pcap"
     analyze_pcap(pcap_file)
 
-#main()
+main()
