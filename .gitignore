@@ -3,3 +3,4 @@
 venv
 !logs/.gitkeep
 logs/*
+__pycache__
