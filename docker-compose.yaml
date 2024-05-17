@@ -24,3 +24,5 @@ services:
 
   web_prometheus_client:
     build: prometheus-client
+    ports:
+      - "5000:5000"
