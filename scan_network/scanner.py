@@ -3,6 +3,7 @@ import logging
 from logging.config import fileConfig
 import pprint
 import json
+import requests
 
 import nmap
 import animation
@@ -94,6 +95,8 @@ class Scanner:
                 host = '127.0.0.1'
             data = {}
             for i in {'vendor', 'tcp', 'udp'}:
+                if host not in answer['scan']:
+                    continue
                 if i in answer['scan'][host]:
                     data[i] = answer['scan'][host][i]
             all_data[host] = data
@@ -136,7 +139,27 @@ class Scanner:
         """
             Try to create metrics on Flask server and send them.
         """
-        pass
+        data = [
+            {
+                "name": 'total_hosts_discovered',
+                "value": str(self.total_hosts_discovered),
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of hosts discovered in a given network"
+            },
+            {
+                "name": 'total_ports_discovered',
+                "value": str(self.total_open_posts_discovered),
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of open ports discovered in a given network"
+            }
+        ]
+        server = "http://localhost:5000/create_metrics"
+        logger.info(f"Sending request to {server} with data: {data}")
+        r = requests.post(server, json=data)
+        if r.status_code != 200:
+            logger.error(r, r.status_code)
 
 
 if __name__ == '__main__':
@@ -145,3 +168,4 @@ if __name__ == '__main__':
     # pprint.pprint(scanner.full_scan(['localhost']), indent=4)
     scanner.full_scan()
     print(scanner.create_readable_msg_dict_based())
+    scanner.send_metrics_to_server()
