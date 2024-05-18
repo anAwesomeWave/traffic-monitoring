@@ -64,7 +64,17 @@ def create_metrics():
     data = request.get_json(force=True)
 
     for metric in data:
-        my_metrics[metric['name']] = [metric['value'], getattr(prometheus_client, metric['class'])(metric['name'], metric['description']), metric['method']]
+        my_metrics[metric['name']] = [
+            metric['value'],
+            getattr(
+                prometheus_client,
+                metric['class'])(metric['name'], metric['description']
+            ),
+            metric['method']
+        ]
+
+    process_update()
+
 
 @app.route('/get_data', methods=['POST'])
 @as_json
