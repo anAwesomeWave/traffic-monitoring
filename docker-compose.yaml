@@ -23,6 +23,6 @@ services:
       - grafana-storage:/var/lib/grafana
 
   web_prometheus_client:
-    build: prometheus-client
+    build: prometheus_client
     ports:
       - "5000:5000"
