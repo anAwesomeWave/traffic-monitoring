@@ -1,7 +1,8 @@
 from logging.config import fileConfig
 
+import requests
+
 from scapy.all import *
-from prettytable import PrettyTable
 from scapy.layers.dns import DNS
 from scapy.layers.dot11 import Dot11Beacon, Dot11Elt, Dot11
 from scapy.layers.inet import TCP, UDP, ICMP, IP
@@ -22,22 +23,25 @@ class PcapFilters:
     def __init__(self, packets):
         self.packets = packets
 
-    def filter_packets(self):
-        tcp_packets = self.packets.filter(lambda p: TCP in p)
-        udp_packets = self.packets.filter(lambda p: UDP in p)
-        icmp_packets = self.packets.filter(lambda p: ICMP in p)
-        other_packets = self.packets.filter(
-            lambda p: not (TCP in p or UDP in p or ICMP in p))
-        return tcp_packets, udp_packets, icmp_packets, other_packets
+    def filter_packets_by_protocol(self, protocol):
+        filtered = self.packets.filter(lambda p: protocol in p)
+        return filtered
 
     def filter_packets_by_source_ip(self, source_ip):
         filtered_packets = self.packets.filter(
             lambda p: IP in p and p[IP].src == source_ip)
         return filtered_packets
 
-    def filter_packets_by_destination_port(self, dest_port):
-        filtered_packets = self.packets.filter(
-            lambda p: TCP in p and p[TCP].dport == dest_port)
+    def filter_packets_by_destination_ip(self, destination_ip):
+        filtered_packets = self.packets.filter(lambda p: IP in p and p[IP].dst == destination_ip)
+        return filtered_packets
+
+    def filter_packets_by_source_port(self, source_port):
+        filtered_packets = self.packets.filter(lambda p: TCP in p and p[TCP].sport == source_port)
+        return filtered_packets
+
+    def filter_packets_by_destination_port(self, destination_port):
+        filtered_packets = self.packets.filter(lambda p: TCP in p and p[TCP].dport == destination_port)
         return filtered_packets
 
     def filter_packets_by_mac_address(self, mac_address):
@@ -50,8 +54,8 @@ class PcapFilters:
             lambda p: IP in p and start_ip <= p[IP].src <= end_ip)
         return filtered_packets
 
-    def filter_packets_by_protocol(self, protocol):
-        filtered_packets = self.packets.filter(lambda p: p.haslayer(protocol))
+    def filter_packets_by_http(self):
+        filtered_packets = self.packets.filter(lambda p: p.haslayer(TCP))
         return filtered_packets
 
     def parse_dns_packets(self):
@@ -122,123 +126,165 @@ class PcapFilters:
         }
         return frame_types.get(frame_type, "Unknown")
 
-    @staticmethod
-    def summarize_findings(tcp_packets, udp_packets, icmp_packets,
-                           other_packets, source_ip_packets, dest_port_packets,
-                           mac_address_packets, ip_range_packets, http_packets,
-                           suspicious_packets, syn_packets,
-                           channel_info, management_frame_info, domain_info):
 
-        table = PrettyTable()
-        table.field_names = ["Finding", "Count/Value"]
-        table.align["Finding"] = "l"
-        table.align["Count/Value"] = "c"
-
-        table.add_row(["TCP Packets", len(tcp_packets)])
-        table.add_row(["UDP Packets", len(udp_packets)])
-        table.add_row(["ICMP Packets", len(icmp_packets)])
-        table.add_row(["Other Packets", len(other_packets)])
-        table.add_row(
-            ["Packets from Source IP 192.168.0.1", len(source_ip_packets)])
-        table.add_row(
-            ["Packets to Destination Port 80", len(dest_port_packets)])
-        table.add_row(["Packets from/to MAC 00:11:22:33:44:55",
-                       len(mac_address_packets)])
-        table.add_row(["Packets in IP Range 192.168.0.1 - 192.168.0.100",
-                       len(ip_range_packets)])
-        table.add_row(["HTTP Packets", len(http_packets)])
-        table.add_row(
-            ["Suspicious Packets (Payload > 1024)", len(suspicious_packets)])
-        table.add_row(["SYN Packets", len(syn_packets)])
-
-        beacon_channels = ", ".join(
-            str(channel) for channel in channel_info.keys())
-        table.add_row(["Beacon Frame Channels", beacon_channels])
-
-        for frame_type, source_mac, destination_mac in management_frame_info:
-            frame_type_explanation = PcapFilters.get_frame_type_explanation(
-                frame_type)
-            table.add_row([f"Management Frame: {frame_type_explanation}", ""])
-
-        dns_domains = "\n".join(domain_info)
-        table.add_row(["DNS Domains", dns_domains])
-
-        return table
-
-
-def analyze_pcap(pcap_file):
+def analyze_pcap(pcap_file, max_payload_size=1024, ports=[], IPs=[]):
     """
     Analyzes a pcap file and performs various packet filtering and parsing operations.
 
     Args:
         pcap_file: The path to the pcap file to analyze.
+        @type pcap_file: file.pcap.
+        @type max_payload_size: bytes.
+        @param IPs: list of ip addresses to track.
+        @param ports: list of ports addresses to track.
     """
+
+    logger.info('Start scanning network')
+
+    Metrics = {
+        "Total packets": 0,
+        "TCP packets": 0,
+        "UDP packets": 0,
+        "ICMP packets": 0,
+        "HTTP packets": 0,
+        "Domain names": set(),
+        "Ports": dict(),
+        "IPs": dict(),
+        "Suspicious packets": dict(),
+        "Management Frames Info": []
+    }
     packets = rdpcap(pcap_file)
     pcap_filters = PcapFilters(packets)
-    tcp_packets, udp_packets, icmp_packets, other_packets = pcap_filters.filter_packets()
-    source_ip_packets = pcap_filters.filter_packets_by_source_ip("192.168.0.1")
-    dest_port_packets = pcap_filters.filter_packets_by_destination_port(80)
-    mac_address_packets = pcap_filters.filter_packets_by_mac_address(
-        "00:11:22:33:44:55")
-    ip_range_packets = pcap_filters.filter_packets_by_ip_range("192.168.0.1",
-                                                               "192.168.0.100")
-    http_packets = pcap_filters.filter_packets_by_protocol(TCP)
+
+    Metrics["Total packets"] = len(packets)
+    Metrics["TCP packets"] = len(pcap_filters.filter_packets_by_protocol(TCP))
+    Metrics["UDP packets"] = len(pcap_filters.filter_packets_by_protocol(UDP))
+    Metrics["ICMP packets"] = len(pcap_filters.filter_packets_by_protocol(ICMP))
+    Metrics["HTTP packets"] = len(pcap_filters.filter_packets_by_http())
     domain_info = pcap_filters.parse_dns_packets()
-    suspicious_packets = pcap_filters.filter_suspicious_packets(1024)
-    syn_packets = pcap_filters.filter_packets_by_tcp_flags(0x02)  # SYN flag
-    channel_info = pcap_filters.parse_beacon_frames()
-    management_frame_info = pcap_filters.parse_management_frames()
-
-    print("Detailed Output:")
-    print(f"Number of TCP packets: {len(tcp_packets)}")
-    print(f"Number of UDP packets: {len(udp_packets)}")
-    print(f"Number of ICMP packets: {len(icmp_packets)}")
-    print(f"Number of other packets: {len(other_packets)}")
-    print(f"Packets from source IP 192.168.0.1: {len(source_ip_packets)}")
-    print(f"Packets to destination port 80: {len(dest_port_packets)}")
-    print(
-        f"Packets from/to MAC address 00:11:22:33:44:55: {len(mac_address_packets)}")
-    print(
-        f"Packets in IP range 192.168.0.1 - 192.168.0.100: {len(ip_range_packets)}")
-    print(f"HTTP packets: {len(http_packets)}")
-    print(
-        f"Suspicious packets (payload size > 1024): {len(suspicious_packets)}")
-    print(f"SYN packets: {len(syn_packets)}")
-
-    print("\nBeacon frame information by channel:")
-    for channel, beacons in channel_info.items():
-        print(f"Channel {channel}:")
-        for ssid, bssid, power_constraint in beacons:
-            print(
-                f"  SSID: {ssid}, BSSID: {bssid}, Power Constraint: {power_constraint} dBm")
-
-    print("\nManagement frame information:")
-    for frame_type, source_mac, destination_mac in management_frame_info:
-        frame_type_explanation = pcap_filters.get_frame_type_explanation(
-            frame_type)
-        print(
-            f"  Frame Type: {frame_type} ({frame_type_explanation}), Source MAC: {source_mac}, Destination MAC: {destination_mac}")
-
-    print("\nDomain information from DNS packets:")
     for domain_name in domain_info:
-        print(f"  {domain_name}")
+        Metrics["Domain names"].add(domain_name)
 
-    summary_table = pcap_filters.summarize_findings(
-        tcp_packets, udp_packets, icmp_packets, other_packets,
-        source_ip_packets, dest_port_packets, mac_address_packets,
-        ip_range_packets, http_packets, suspicious_packets, syn_packets,
-        channel_info, management_frame_info, domain_info
-    )
+    max_payload_packets = len(pcap_filters.filter_suspicious_packets(max_payload_size))
+    syn_packets = len(pcap_filters.filter_packets_by_tcp_flags(0x02))
+    Metrics["Suspicious packets"] = {f"By payload {max_payload_size}": max_payload_packets,
+                                     "SYN packets": syn_packets}
 
-    print("\nSummary of Findings:")
-    print(summary_table)
+    for IP in IPs:
+        source_ip_packets = len(pcap_filters.filter_packets_by_source_ip(IP))
+        destination_ip_packets = len(pcap_filters.filter_packets_by_destination_ip(IP))
+        Metrics["IPs"][IP] = {"Transmitted packets": source_ip_packets,
+                              "Received packets": destination_ip_packets}
+
+    for port in ports:
+        source_port_packets = len(pcap_filters.filter_packets_by_source_port(port))
+        destination_port_packets = len(pcap_filters.filter_packets_by_destination_port(port))
+        Metrics["Ports"][port] = {"To": source_port_packets,
+                                  "From": destination_port_packets}
+
+    management_frame_info = pcap_filters.parse_management_frames()
+    for frame_type, source_mac, destination_mac in management_frame_info:
+        frame_type_explanation = pcap_filters.get_frame_type_explanation(frame_type)
+        Metrics["Management Frames Info"].append({str(frame_type_explanation): f"From {source_mac} and {destination_mac}"})
+
+    print("\n--------------Metrics----------\n")
+    for key, value in Metrics.items():
+        print("{0}: {1}".format(key, value))
+    print("\n--------------------------------\n")
+
+    return Metrics
 
 
-def main():
-    logger.info('Start scanning network')
-    pcap_file = "scan_pcap/capture.pcap"
-    analyze_pcap(pcap_file)
+def send_metrics_to_server(max_payload, ports=[], IPs=[]):
+        """
+            Try to create metrics on Flask server and send them.
+        """
+        data = [
+            {
+                "name": "total_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of packets transmitted in 30 seconds"
+            },
+            {
+                "name": "icmp_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of ICMP packets transmitted in 30 seconds"
+            },
+            {
+                "name": "tcp_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of TCP packets transmitted in 30 seconds"
+            },
+            {
+                "name": "udp_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of UDP packets transmitted in 30 seconds"
+            },
+            {
+                "name": "http_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of HTTP packets transmitted in 30 seconds"
+            },
+            {
+                "name": "max_payload_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": f"number of HTTP packets that contains more than {max_payload} bytes"
+            },
+            {
+                "name": "syn_packets",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": "number of SYN packets transmitted in 30 seconds"
+            },
+        ]
 
+        for IP in IPs:
+            data.append({
+                "name": f"packets_received_{IP.replace('.', '_')}",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": f"number of packets transmitted to {IP}"
+            })
+            data.append({
+                "name": f"packets_transmitted_{IP.replace('.', '_')}",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": f"number of packets received from {IP}"
+            })
 
-if __name__ == '__main__':
-    main()
+        for port in ports:
+            data.append({
+                "name": f"packets_from_port_{port}",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": f"number of packets received from port {port}"
+            })
+            data.append({
+                "name": f"packets_to_port_{port}",
+                "value": 0,
+                "class": "Gauge",
+                "method": "set",
+                "description": f"number of packets transmitted to port {port}"
+            })
+
+        server = "http://localhost:5000/create_metrics"
+        logger.info(f"Sending request to {server} with data: {data}")
+        r = requests.post(server, json=data)
+        if r.status_code != 200:
+            logger.error(r, r.status_code)
