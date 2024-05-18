@@ -4,6 +4,7 @@ from logging.config import fileConfig
 import pprint
 import json
 import requests
+import argparse
 
 import nmap
 import animation
@@ -27,7 +28,7 @@ class Scanner:
         self.all_gathered_data = {}
 
         self.total_hosts_discovered = 0
-        self.total_open_posts_discovered = 0
+        self.total_open_ports_discovered = 0
 
     @animation.wait(clock)
     def scan_network(
@@ -72,6 +73,7 @@ class Scanner:
         """
 
         all_data = {}
+        total_open_ports = 0
         if len(hosts) == 0:
             hosts = self.discovered_hosts
 
@@ -99,8 +101,13 @@ class Scanner:
                     continue
                 if i in answer['scan'][host]:
                     data[i] = answer['scan'][host][i]
+                    for port in answer['scan'][host][i].values():
+                        if port['state'] == 'open':
+                            total_open_ports += 1
+
             all_data[host] = data
         self.all_gathered_data = all_data
+        self.total_open_ports_discovered += total_open_ports
         return all_data
 
     def create_readable_msg_dict_based(self):
@@ -108,9 +115,7 @@ class Scanner:
             Create message BASED ON self.all_gathered_data field.
             YOU MUST call full_scan at first.
         """
-        total_open_hosts = len(self.all_gathered_data.keys())
-        total_open_ports = 0
-        msg = [f"TOTAL OPEN HOSTS IN NETWORK: {total_open_hosts}"]
+        msg = [f"TOTAL OPEN HOSTS IN NETWORK: {self.total_hosts_discovered}"]
         hosts_info = []
         for host, data in self.all_gathered_data.items():
             msg_for_host = [f"HOST {host}:"]
@@ -119,19 +124,15 @@ class Scanner:
                     continue
                 msg_for_host.append(f' - {protocol}:')
                 for port, port_data in data[protocol].items():
-                    if port_data['state'] == 'open':
-                        total_open_ports += 1
                     msg_for_host.append(
                         f'\t- {port}({port_data["state"]})-----{port_data["name"]}, {port_data["product"]}, {port_data["version"]}'
                     )
             msg_for_host = '\n'.join(msg_for_host)
             hosts_info.append(msg_for_host)
         hosts_info = '\n------------------------------\n'.join(hosts_info)
-        msg.append(f'TOTAL OPEN PORTS IN NETWORK: {total_open_ports}')
+        msg.append(f'TOTAL OPEN PORTS DISCOVERED IN NETWORK: {self.total_open_ports_discovered}')
+        msg.append(f'(if you see zero, it means that you may not have enabled the -fs flag.)')
         msg.append(hosts_info)
-
-        self.total_hosts_discovered = total_open_hosts
-        self.total_open_posts_discovered = total_open_ports
 
         return '\n'.join(msg)
 
@@ -149,7 +150,7 @@ class Scanner:
             },
             {
                 "name": 'total_ports_discovered',
-                "value": str(self.total_open_posts_discovered),
+                "value": str(self.total_open_ports_discovered),
                 "class": "Gauge",
                 "method": "set",
                 "description": "number of open ports discovered in a given network"
@@ -163,9 +164,47 @@ class Scanner:
 
 
 if __name__ == '__main__':
+    # scanner = Scanner()
+    # print(scanner.scan_network('192.168.1.0/24'))
+    # # pprint.pprint(scanner.full_scan(['localhost']), indent=4)
+    # scanner.full_scan()
+    # print('-------------------------------------')
+    # print(scanner.total_open_ports_discovered)
+    # print('-------------------------------------')
+    # print(scanner.create_readable_msg_dict_based())
+    # scanner.send_metrics_to_server()
+    parser_nmap = argparse.ArgumentParser(
+        prog='Network monitoring',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser_nmap.add_argument('network', type=str, help='bar help')
+    parser_nmap.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        # default=True,
+        help='Provide info about collected data to the terminal. Works better with -fs'
+    )
+    parser_nmap.add_argument(
+        '-fs',
+        '--fullscan',
+        action='store_true',
+        help='fullscan all found hosts in network.'
+    )
+    parser_nmap.add_argument(
+        '-m',
+        '--send_metrics_to_server',
+        action='store_true',
+        # default=True,
+        help='Send metrics `total_hosts_discovered`,`total_ports_discovered`.'
+    )
+
+    args = parser_nmap.parse_args()
     scanner = Scanner()
-    print(scanner.scan_network('192.168.1.0/24'))
-    # pprint.pprint(scanner.full_scan(['localhost']), indent=4)
-    scanner.full_scan()
-    print(scanner.create_readable_msg_dict_based())
-    scanner.send_metrics_to_server()
+    scanner.scan_network(args.network)
+    if args.fullscan is True:
+        scanner.full_scan()
+    if args.verbose is True:
+        print(scanner.create_readable_msg_dict_based())
+    if args.send_metrics_to_server is True:
+        scanner.send_metrics_to_server()
