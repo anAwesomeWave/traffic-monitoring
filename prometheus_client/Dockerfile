@@ -8,4 +8,4 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 
 COPY . .
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "web_app:app", "--log-level", "debug"]
+CMD ["uwsgi", "--http", "0.0.0.0:5000", "--wsgi-file", "web_app.py", "--callable", "app"]

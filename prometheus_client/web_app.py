@@ -12,6 +12,9 @@ from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, \
 from prometheus_client.registry import Collector
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 
+prometheus_client.REGISTRY.unregister(prometheus_client.PROCESS_COLLECTOR)
+prometheus_client.REGISTRY.unregister(prometheus_client.PLATFORM_COLLECTOR)
+prometheus_client.REGISTRY.unregister(prometheus_client.GC_COLLECTOR)
 # Create my app
 
 app = Flask(__name__)
