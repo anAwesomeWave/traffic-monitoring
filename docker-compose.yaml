@@ -21,6 +21,7 @@ services:
       - "13000:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
+      - ./grafana-datasource:/etc/grafana/provisioning
 
   web_prometheus_client:
     build: prometheus_client
