@@ -55,7 +55,6 @@ python3 scan_network/scanner.py -v -fs -m  # full usage
 
 Go to http://localhost:9090 to enter grafana.
 
-# TODO
 
 
 ## Ports:
