@@ -8,8 +8,13 @@ Tools for network monitoring
 ## Prerequisites
 List with the necessary programs.
 Check that you have them
- - TSHARK `sudo apt install tshark -y`
+ - TSHARK 
+
+```sudo apt install tshark -y```
+
  - DOCKER [Link](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
+
+``` sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && sudo apt-get update && sudo apt-get install -y docker-ce ```
 
 ## 📦 Installation:
 1. Clone this repository from GitHub:
@@ -52,6 +57,12 @@ Go to http://localhost:9090 to enter grafana.
 
 # TODO
 
+
+## Ports:
+
+#### - http://localhost:9090  -- Prometheus
+#### - http://localhost:13000 -- Grafana
+#### - https://localhost:7777 -- OpenVAS
 
 
 ## Metrics:

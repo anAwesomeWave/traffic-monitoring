@@ -9,14 +9,12 @@ def is_tool(name):
     return which(name) is not None
 
 
-print(is_tool('tsharkw'))
-
 if __name__ == '__main__':
-    for tool in {'docker', 'tshark'}:
+    for tool in {'wheel', 'docker', 'tshark'}:
         if is_tool(tool) is False:
             print(f'ERROR: you don\'t have {tool} installed.')
             exit(1)
-    network = input('input network addr.')
+    network = input('input network addr.:')
     scan = scanner.Scanner()
     scan.scan_network(network)
     scan.full_scan()
