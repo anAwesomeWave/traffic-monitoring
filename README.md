@@ -1,8 +1,15 @@
 # Traffic Monitoring
 
 
+
 ## 📖 About:
 Tools for network monitoring
+
+## Prerequisites
+List with the necessary programs.
+Check that you have them
+ - TSHARK `sudo apt install tshark -y`
+ - DOCKER [Link](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 
 ## 📦 Installation:
 1. Clone this repository from GitHub:
@@ -16,12 +23,15 @@ git clone git@github.com:anAwesomeWave/traffic-monitoring.git
 ```
 cd traffic-monitoring
 ```
-3. Install all dependencies:
+3. Create virtual environment:
+```
+python3 -m venv venv
+```
+4. Install all dependencies:
 
 ```
 pip3 install -r requirements.txt
 ```
-# TODO
 
 ## 💡 Quickstart:
 To run prometheus&grafana network monitoring 
