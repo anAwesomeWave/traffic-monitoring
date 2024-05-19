@@ -64,6 +64,8 @@ def create_metrics():
     data = request.get_json(force=True)
 
     for metric in data:
+        if metric['name'] in my_metrics:
+            continue
         my_metrics[metric['name']] = [
             metric['value'],
             getattr(

@@ -41,10 +41,15 @@ pip3 install -r requirements.txt
 ```
 
 ## 💡 Quickstart:
-To run prometheus&grafana network monitoring 
+To run prometheus-grafana-openVAS network monitoring enter:
 ```
 sudo docker compose up
 ```
+To run network monitoring scripts enter:
+```
+python3 main.py
+```
+
 -------
 If you only want to scan network for open ports, try:
 ```
