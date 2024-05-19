@@ -70,3 +70,15 @@ Go to http://localhost:9090 to enter grafana.
 ### - scan_network/scanner.py
 - total_hosts_discovered (Количество известных хостов в сети)
 - total_ports_discovered (Количество открытых портов в сети)
+### - scan_network/scanner.py
+- total_packets (Количество пакетов)
+- icmp_packets (Количество icmp пакетов)
+- tcp_packets (Количество tcp пакетов)
+- udp_packets (Количество upd пакетов)
+- http_packets (Количество http пакетов)
+- max_payload_packets (Количество пакетов содержащих больше 2048 байт)
+- syn_packets (Количестве syn пакетов)
+- packets_received_{IP}(192_168_0_11) (Количество пакетов принятых IP)
+- packets_transmitted_{IP}(192_168_0_11) (Количество пакетов переданных от IP)
+- packets_from_port_{port}(80) (Количество пакетов переданнх от port)
+- packets_to_port_{port}(80) (Количество пакетов переданнх в port)
