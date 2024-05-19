@@ -26,6 +26,8 @@ cd traffic-monitoring
 3. Create virtual environment:
 ```
 python3 -m venv venv
+
+source venv/bin/activate
 ```
 4. Install all dependencies:
 
