@@ -3,7 +3,7 @@ import subprocess
 import time
 import requests
 
-from pcap_scanner import analyze_pcap, send_metrics_to_server
+from scan_pcap.pcap_scanner import analyze_pcap, send_metrics_to_server
 
 server = "http://localhost:5000/get_data"
 
@@ -35,5 +35,3 @@ def write_pcap(max_payload, ports=[], IPs=[]):
         r = requests.post(server, json=data)
         print("\n-------------------------------------------------\n")
 
-
-write_pcap(2048, [80], ["192.128.0.11"])

@@ -25,6 +25,7 @@ class Scanner:
     def __init__(self):
         self.nm = nmap.PortScanner()
         self.discovered_hosts = []
+        self.open_ports = []
         self.all_gathered_data = {}
 
         self.total_hosts_discovered = 0
@@ -34,7 +35,7 @@ class Scanner:
     def scan_network(
             self,
             hosts: str = '192.168.1.0/24',
-            arguments: str = '-n -v -sP -PE -PA21,23,3389'
+            arguments: str = '-n -v -sP -PE -PA21,23,80,443,3389'
     ) -> list:
         logger.info(f'Scanning hosts: {hosts}')
         logger.debug(f'Hosts: {hosts}\nArguments: {arguments}')
@@ -101,9 +102,10 @@ class Scanner:
                     continue
                 if i in answer['scan'][host]:
                     data[i] = answer['scan'][host][i]
-                    for port in answer['scan'][host][i].values():
+                    for port_k, port in answer['scan'][host][i].items():
                         if port['state'] == 'open':
                             total_open_ports += 1
+                            self.open_ports.append(int(port_k))
 
             all_data[host] = data
         self.all_gathered_data = all_data

@@ -8,11 +8,6 @@ services:
   openvas:
     image: mikesplain/openvas
     restart: on-failure
-    environment:
-      - PASSWORD=123
-      - USERNAME=admin
-      - HTTPS=false
-#      - "PUBLIC_HOSTNAME=localhost"
     ports:
       - "7777:443"
     volumes:
