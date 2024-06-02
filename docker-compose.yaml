@@ -39,3 +39,7 @@ services:
     build: prometheus_client
     ports:
       - "5000:5000"
+  test_server:
+    image: nginx
+    ports:
+      - "80:80"
